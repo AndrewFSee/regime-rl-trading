@@ -1,0 +1,40 @@
+environment:
+  initial_cash: 100000
+  transaction_cost: 0.001
+  lookback_window: 20
+  reward_scaling: 1.0
+  max_position: 1.0
+
+agent:
+  type: ppo  # ppo or dqn
+  learning_rate: 0.0003
+  gamma: 0.99
+  batch_size: 64
+  training_episodes: 1000
+  epsilon_start: 1.0
+  epsilon_end: 0.01
+  epsilon_decay: 0.995
+
+regime_detection:
+  method: feature  # hmm or feature
+  hmm:
+    n_components: 4
+    n_iter: 100
+    covariance_type: full
+  feature:
+    volatility_low: 0.01
+    volatility_high: 0.025
+    trend_threshold: 0.02
+    momentum_threshold: 0.05
+
+data:
+  tickers:
+    - SPY
+  start_date: "2015-01-01"
+  end_date: "2023-12-31"
+  train_ratio: 0.8
+  interval: "1d"
+
+evaluation:
+  output_dir: "results"
+  save_plots: true
