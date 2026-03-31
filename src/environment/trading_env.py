@@ -153,6 +153,8 @@ class TradingEnv(gym.Env):
 
     def _current_drawdown(self) -> float:
         self._peak_value = max(self._peak_value, self._portfolio_value)
+        if self._peak_value == 0:
+            return 0.0
         return (self._peak_value - self._portfolio_value) / self._peak_value
 
     def _rolling_volatility(self) -> float:

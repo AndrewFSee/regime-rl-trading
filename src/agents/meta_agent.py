@@ -128,10 +128,9 @@ class MetaAgent(BaseAgent):
         """
         agent = self.agents[regime]
         try:
-            # SB3 PPO does not use epsilon-greedy, but we can perturb the
-            # log-std of the policy's action distribution slightly.
+            import torch
             if hasattr(agent.model, "policy") and hasattr(agent.model.policy, "log_std"):
-                with __import__("torch").no_grad():
+                with torch.no_grad():
                     agent.model.policy.log_std.data += 0.5
         except Exception:
             pass  # Fail silently – exploration boost is a nice-to-have

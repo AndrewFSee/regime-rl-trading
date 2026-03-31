@@ -48,7 +48,8 @@ class Backtester:
         excess = arr - risk_free / 252.0
         downside = arr[arr < 0]
         if len(downside) == 0 or downside.std() == 0:
-            return float("inf") if excess.mean() > 0 else 0.0
+            # No downside returns: Sortino is undefined; return a large finite value.
+            return 100.0 if excess.mean() > 0 else 0.0
         return float(excess.mean() / downside.std() * np.sqrt(252))
 
     @staticmethod
