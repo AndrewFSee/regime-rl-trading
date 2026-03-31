@@ -77,7 +77,7 @@ def main(config_path: str = "config/default.yaml", ticker: str | None = None) ->
     # ------------------------------------------------------------------
     agent_cfg = cfg["agent"]
     agent_type = agent_cfg.get("type", "ppo").lower()
-    # timesteps = episodes × steps_per_episode (1 000 is a reasonable episode length)
+    # timesteps = episodes × steps_per_episode (1,000 is a reasonable episode length)
     total_timesteps = agent_cfg["training_episodes"] * 1000
 
     if agent_type == "ppo":

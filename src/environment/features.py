@@ -34,7 +34,7 @@ class FeatureEngineer:
         5  bb_lower     – lower Bollinger Band (20d, 2σ) / close - 1
         6  momentum     – 10-day price return
         7  rsi          – RSI(14) normalised to [-1, 1]  (rsi/50 - 1)
-        8  atr          – ATR(14) / close
+        8  atr          – ATR(14) / close  (unitless ratio: absolute ATR divided by close price)
         9  volume_ratio – volume / 20-day avg volume
     """
 

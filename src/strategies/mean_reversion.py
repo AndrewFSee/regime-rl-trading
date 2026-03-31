@@ -17,7 +17,8 @@ class MeanReversionStrategy(TradingStrategy):
     Decision rules (each condition contributes ±1 vote):
         rsi < -0.4  (≈ RSI<30) → buy  vote
         rsi > +0.4  (≈ RSI>70) → sell vote
-        bb_lower < 0            → price above lower band (buy if deeply below)
+        bb_lower > 0            → lower band above price (price below lower band → buy)
+        bb_upper < 0            → upper band below price (price above upper band → sell)
         The raw signal is the mean of all individual votes, clipped to [-1, 1].
     """
 
