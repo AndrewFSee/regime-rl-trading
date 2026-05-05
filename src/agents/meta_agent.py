@@ -101,10 +101,13 @@ class MetaAgent(BaseAgent):
         Train all sub-agents in round-robin fashion.
 
         Each sub-agent receives an equal share of the total timestep budget.
+        The ``env`` kwarg is accepted for ``BaseAgent`` interface symmetry but
+        ignored — each sub-agent already holds the shared env reference set
+        in ``__init__``. Re-binding here would silently bypass that wiring.
         """
         per_agent = max(1, total_timesteps // len(self.agents))
         for regime, agent in self.agents.items():
-            agent.learn(env=env, total_timesteps=per_agent)
+            agent.learn(total_timesteps=per_agent)
 
     def save(self, path: str) -> None:
         """Save each sub-agent under ``<path>/<regime_name>``."""

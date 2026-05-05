@@ -4,6 +4,7 @@ from .momentum import MomentumStrategy
 from .mean_reversion import MeanReversionStrategy
 from .breakout import BreakoutStrategy
 from .defensive import DefensiveStrategy
+from .trend_following import TrendFollowingStrategy
 
 __all__ = [
     "TradeSignal",
@@ -12,4 +13,5 @@ __all__ = [
     "MeanReversionStrategy",
     "BreakoutStrategy",
     "DefensiveStrategy",
+    "TrendFollowingStrategy",
 ]

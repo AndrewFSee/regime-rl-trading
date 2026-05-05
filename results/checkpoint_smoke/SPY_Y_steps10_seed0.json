@@ -1,0 +1,29 @@
+{
+  "checkpoint_path": "results\\checkpoint_smoke\\SPY_Y_steps10_seed0.zip",
+  "combo_name": "Y: hard+cap35+f50+t10",
+  "config_code": "Y",
+  "end": "2024-01-01",
+  "env_kwargs": {
+    "benchmark_relative": false,
+    "bull_benchmark": false,
+    "downside_only": true,
+    "exposure_floor": 0.5,
+    "exposure_penalty": 0.0,
+    "hard_selection": true,
+    "lookback_window": 20,
+    "normalize_obs": true,
+    "obs_features": null,
+    "regime_guardrail": false,
+    "return_weight": 0.0,
+    "risk_off_exposure_cap": 0.35,
+    "trend_bonus": 0.1
+  },
+  "obs_features": null,
+  "seed": 0,
+  "start": "2023-01-01",
+  "stopped_at": 10,
+  "ticker": "SPY",
+  "timesteps": 10,
+  "train_ratio": 0.7,
+  "use_lstm": false
+}

@@ -17,6 +17,8 @@ FEATURE_NAMES = [
     "volume_ratio",
 ]
 
+FEATURE_INDEX = {name: i for i, name in enumerate(FEATURE_NAMES)}
+
 
 class FeatureEngineer:
     """
@@ -65,20 +67,32 @@ class FeatureEngineer:
     # Public API
     # ------------------------------------------------------------------
 
-    def compute(self, data: pd.DataFrame) -> pd.DataFrame:
+    def compute(
+        self,
+        data: pd.DataFrame,
+        macro: pd.DataFrame | None = None,
+    ) -> pd.DataFrame:
         """
-        Compute all 10 features.
+        Compute all 10 base technical features, optionally extended with macro
+        / cross-asset features.
 
         Parameters
         ----------
         data:
             DataFrame with columns ``Open``, ``High``, ``Low``, ``Close``,
             ``Volume`` (case-insensitive lookup attempted).
+        macro:
+            Optional DataFrame of pre-transformed macro features (output of
+            :meth:`MacroLoader.compute_features`). If provided, its columns
+            are appended *after* the base 10 columns. The macro DataFrame is
+            reindexed to ``data``'s index with forward-fill so its rows
+            align row-for-row with the OHLCV input.
 
         Returns
         -------
-        pd.DataFrame with columns matching ``FEATURE_NAMES``, same index as
-        *data*.  Any remaining NaN values are filled with 0.
+        pd.DataFrame whose first 10 columns match ``FEATURE_NAMES`` (so
+        existing strategy code that indexes positionally keeps working) and
+        whose remaining columns are the macro features in the order supplied.
         """
         cols = {c.lower(): c for c in data.columns}
 
@@ -145,4 +159,16 @@ class FeatureEngineer:
             },
             index=data.index,
         )
-        return features.ffill().fillna(0.0)
+        features = features.ffill().fillna(0.0)
+
+        if macro is not None and len(macro.columns) > 0:
+            macro_aligned = macro.reindex(data.index).ffill().bfill().fillna(0.0)
+            # Avoid name collisions with base features.
+            dup = set(macro_aligned.columns) & set(FEATURE_NAMES)
+            if dup:
+                raise ValueError(
+                    f"Macro DataFrame columns collide with base feature names: {dup}"
+                )
+            features = pd.concat([features, macro_aligned], axis=1)
+
+        return features

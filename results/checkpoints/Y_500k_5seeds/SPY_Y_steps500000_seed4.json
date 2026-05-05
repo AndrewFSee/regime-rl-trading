@@ -1,0 +1,29 @@
+{
+  "checkpoint_path": "results\\checkpoints\\Y_500k_5seeds\\SPY_Y_steps500000_seed4.zip",
+  "combo_name": "Y: hard+cap35+f50+t10",
+  "config_code": "Y",
+  "end": "2025-01-01",
+  "env_kwargs": {
+    "benchmark_relative": false,
+    "bull_benchmark": false,
+    "downside_only": true,
+    "exposure_floor": 0.5,
+    "exposure_penalty": 0.0,
+    "hard_selection": true,
+    "lookback_window": 20,
+    "normalize_obs": true,
+    "obs_features": null,
+    "regime_guardrail": false,
+    "return_weight": 0.0,
+    "risk_off_exposure_cap": 0.35,
+    "trend_bonus": 0.1
+  },
+  "obs_features": null,
+  "seed": 4,
+  "start": "2007-01-01",
+  "stopped_at": 500000,
+  "ticker": "SPY",
+  "timesteps": 500000,
+  "train_ratio": 0.7,
+  "use_lstm": false
+}

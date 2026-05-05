@@ -4,16 +4,46 @@ environment:
   lookback_window: 20
   reward_scaling: 1.0
   max_position: 1.0
+  # --- Frictions (realistic slippage model) ---
+  slippage_bps: 1.0          # half-spread cost (bps per unit turnover)
+  slippage_vol_coef: 0.0     # vol-scaled adverse-selection coefficient (bps)
+  borrow_cost_bps_yr: 0.0    # annual borrow cost on shorts (bps/yr)
+  slippage_factor: 0.0       # legacy quadratic volume-impact (default off)
+  # --- Reward shaping ---
+  return_weight: 0.0
+  exposure_penalty: 0.0
+  trend_bonus: 0.0
+  downside_only: false
+  benchmark_relative: false
+  bull_benchmark: false
+  exposure_floor: 0.0
+  # --- Regime guardrails (require hard_selection: true) ---
+  hard_selection: false
+  regime_guardrail: false
+  risk_off_exposure_cap: null
+  risk_off_strategy_penalty: 0.0
+  # --- Drawdown-aware reward (CVaR-style) ---
+  drawdown_penalty: 0.0     # 0.0 disables; try 0.1-1.0 to penalise excess DD
+  drawdown_threshold: 0.0   # only penalise drawdowns beyond this fraction (e.g. 0.05)
+  normalize_obs: true
 
 agent:
-  type: ppo  # ppo or dqn
+  type: sac  # ppo, sac, tqc, or dqn
   learning_rate: 0.0003
   gamma: 0.99
   batch_size: 64
   training_episodes: 1000
-  epsilon_start: 1.0
-  epsilon_end: 0.01
-  epsilon_decay: 0.995
+  # --- Experiment tracking (TensorBoard) ---
+  # Set tensorboard_log to a directory to enable SB3's built-in TB logging.
+  # Launch with:  tensorboard --logdir results/tb
+  tensorboard_log: null   # e.g. "results/tb"
+  tb_log_name: "run"
+  # --- TQC-only knobs (ignored by other agent types) ---
+  # Risk-averse / distributional SAC: drop the top-K quantiles of the critic
+  # before computing the target. Higher = more pessimistic / CVaR-like.
+  n_quantiles: 25
+  n_critics: 2
+  top_quantiles_to_drop_per_net: 2
 
 regime_detection:
   method: feature  # hmm or feature
@@ -34,6 +64,23 @@ data:
   end_date: "2023-12-31"
   train_ratio: 0.8
   interval: "1d"
+  # --- Macro / cross-asset panel (opt-in; used once features are wired) ---
+  macro:
+    enabled: false
+    yf_tickers:
+      - "^VIX"      # equity vol
+      - "^VIX3M"    # 3M VIX (term-structure denominator)
+      - "TLT"       # long-duration Treasuries
+      - "GLD"       # gold
+      - "UUP"       # USD index proxy
+      - "HYG"       # high-yield credit
+      - "LQD"       # investment-grade credit
+      - "^TNX"      # 10Y Treasury yield (%)
+      - "^IRX"      # 13W Treasury yield (%)
+      - "^FVX"      # 5Y Treasury yield (%)
+    fred_series: []  # FRED CSV endpoint deprecated (silent 1y truncation)
+    cache_dir: "data/cache/macro"
+    add_derived: true   # adds VIX_TS, HYG_LQD, T10Y5Y, T10Y3M
 
 evaluation:
   output_dir: "results"

@@ -33,6 +33,7 @@ class DataLoader:
         self.train_ratio = train_ratio
         self.interval = interval
         self._data: dict[str, pd.DataFrame] = {}
+        self._macro: pd.DataFrame | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -115,6 +116,105 @@ class DataLoader:
         split_idx = int(len(df) * self.train_ratio)
         return df.iloc[:split_idx].copy(), df.iloc[split_idx:].copy()
 
+    def get_walk_forward_splits(
+        self,
+        ticker: str,
+        train_size: int,
+        test_size: int,
+        step: int | None = None,
+        embargo: int = 0,
+    ) -> list[tuple[pd.DataFrame, pd.DataFrame]]:
+        """Return rolling-window walk-forward (train, test) splits.
+
+        Parameters
+        ----------
+        ticker:      Ticker key to split.
+        train_size:  Number of bars in each training window.
+        test_size:   Number of bars in each test window (immediately following
+                     the train window plus ``embargo`` bars).
+        step:        Stride between successive train-window starts. Defaults to
+                     ``test_size`` (non-overlapping test windows).
+        embargo:     Bars to drop between train and test to reduce leakage from
+                     rolling features that span both segments.
+
+        Returns
+        -------
+        List of (train_df, test_df) tuples in chronological order.
+        """
+        if ticker not in self._data:
+            raise KeyError(f"Ticker '{ticker}' not loaded.")
+        if train_size <= 0 or test_size <= 0:
+            raise ValueError("train_size and test_size must be positive")
+        df = self._data[ticker]
+        n = len(df)
+        stride = step if step is not None else test_size
+        if stride <= 0:
+            raise ValueError("step must be positive")
+
+        splits: list[tuple[pd.DataFrame, pd.DataFrame]] = []
+        start = 0
+        while True:
+            train_end = start + train_size
+            test_start = train_end + embargo
+            test_end = test_start + test_size
+            if test_end > n:
+                break
+            train_df = df.iloc[start:train_end].copy()
+            test_df = df.iloc[test_start:test_end].copy()
+            splits.append((train_df, test_df))
+            start += stride
+        return splits
+
     def get_data(self, ticker: str) -> Optional[pd.DataFrame]:
         """Return the full DataFrame for a ticker, or None if not loaded."""
         return self._data.get(ticker)
+
+    # ------------------------------------------------------------------
+    # Macro / cross-asset panel (opt-in)
+    # ------------------------------------------------------------------
+
+    def fetch_macro(
+        self,
+        yf_tickers: list[str] | None = None,
+        fred_series: list[str] | None = None,
+        cache_dir: str | None = None,
+        use_cache: bool = True,
+        add_derived: bool = True,
+    ) -> pd.DataFrame:
+        """Fetch the macro / cross-asset panel and store it on the loader.
+
+        The panel spans the same ``start_date``..``end_date`` window as the
+        primary OHLCV data and is reindexed to business days. Use
+        :meth:`get_macro` to retrieve it after fetching, or
+        :meth:`get_macro_aligned` to get it joined to a specific ticker.
+        """
+        from .macro_loader import MacroLoader
+
+        ml = MacroLoader(
+            start_date=self.start_date,
+            end_date=self.end_date,
+            yf_tickers=yf_tickers,
+            fred_series=fred_series,
+            cache_dir=cache_dir,
+        )
+        df = ml.fetch(use_cache=use_cache)
+        if add_derived:
+            df = MacroLoader.add_derived(df)
+        self._macro = df
+        return df
+
+    def get_macro(self) -> Optional[pd.DataFrame]:
+        """Return the cached macro panel, or None if :meth:`fetch_macro` not called."""
+        return self._macro
+
+    def get_macro_aligned(self, ticker: str) -> pd.DataFrame:
+        """Return the macro panel reindexed to ``ticker``'s OHLCV index (ffill).
+
+        Raises ``KeyError`` if the ticker has not been loaded, ``RuntimeError``
+        if the macro panel has not been fetched yet.
+        """
+        if ticker not in self._data:
+            raise KeyError(f"Ticker '{ticker}' not loaded.")
+        if self._macro is None:
+            raise RuntimeError("Macro panel not fetched. Call fetch_macro() first.")
+        return self._macro.reindex(self._data[ticker].index).ffill().bfill()

@@ -1,0 +1,104 @@
+﻿==========================================================================================
+STRATEGY DIAGNOSTICS - SPY - 500000 steps - seed=4
+==========================================================================================
+Train: 3171 bars | Test: 1359 bars
+
+==========================================================================================
+PART 1: RAW STRATEGY SIGNALS ON TEST DATA
+==========================================================================================
+
+Strategy            Mean      Std    %Long   %Short    %Flat
+-------------------------------------------------------
+Momentum           0.397    0.806    70.9%    28.3%     0.7%
+MeanRevert        -0.174    0.540     7.4%    24.8%    67.8%
+Breakout           0.048    0.202    31.4%     2.2%    66.4%
+Defensive          0.181    0.046    97.3%     0.0%     2.7%
+
+EW Blend           0.113    0.177    75.0%    25.0%     0.0%
+EW Direction       0.349    0.583
+
+Period                 Momentum    MeanRev   Breakout  Defensive   EW Blend
+----------------------------------------------------------------------
+COVID crash              -0.583      0.417     -0.100      0.079     -0.047
+COVID recovery            0.702     -0.221      0.183      0.111      0.194
+2022 bear                -0.306      0.056      0.073      0.158     -0.005
+Late-2022 rebound         0.286     -0.018      0.157      0.127      0.138
+2023-24 bull              0.477     -0.229      0.019      0.200      0.117
+
+==========================================================================================
+PART 2: TRAINED AGENT BEHAVIOR (floor50+trend0.1+hard+cap0.35, 500000 steps)
+==========================================================================================
+  Loaded checkpoint: C:\Users\Andrew\projects\regime-rl-trading\results\checkpoints\Y_500k_5seeds\SPY_Y_steps500000_seed4.zip
+
+  Test steps: 1339
+  Final portfolio value: $99,466 (initial $100,000)
+  Total return: -0.5%
+
+--- Agent Strategy Allocation (mean over test) ---
+Strategy         Mean Wt   Std Wt      Min      Max
+-----------------------------------------------
+Momentum           47.8%    50.0%     0.0%   100.0%
+MeanRevert         17.4%    37.9%     0.0%   100.0%
+Breakout           15.5%    36.2%     0.0%   100.0%
+Defensive          19.3%    39.5%     0.0%   100.0%
+
+--- Hard Strategy Picks ---
+Strategy          Chosen  Requested
+-------------------------------------
+Momentum           47.8%      47.8%
+MeanRevert         17.4%      17.4%
+Breakout           15.5%      15.5%
+Defensive          19.3%      19.3%
+
+--- Agent Exposure Level ---
+  Mean exposure: 0.750
+  Std exposure:  0.250
+  Min exposure:  0.350
+  Max exposure:  0.998
+  % at floor (0.50-0.55): 8.1%
+  % at max (0.95-1.00):   33.9%
+
+--- Agent Position (direction x exposure) ---
+  Mean |position|: 0.553
+  Mean position:   0.454
+  % long (>0.1):   66.2%
+  % short (<-0.1): 9.4%
+  % flat (-0.1 to 0.1): 24.3%
+
+--- Comparison: Momentum-only at full exposure ---
+  Mean |position|: 0.997
+  % long (>0.1):   71.6%
+
+--- Agent Behavior by Market Period ---
+Period                Avg Pos  Avg Exp   Momentum    MeanRev   Breakout     Defens
+----------------------------------------------------------------------------------------
+COVID crash            +0.069    0.383      16.7%      25.0%      16.7%      41.7%
+COVID recovery         +0.516    0.769      66.3%      11.5%       6.7%      15.4%
+2022 bear              +0.296    0.588      41.3%       9.2%      16.8%      32.7%
+Late-2022 rebound      +0.389    0.705      53.6%      19.6%      12.5%      14.3%
+2023-24 bull           +0.493    0.785      49.2%      18.3%      15.4%      17.2%
+
+==========================================================================================
+PART 3: STRATEGY SIGNAL PREDICTIVE QUALITY
+==========================================================================================
+
+Strategy         Corr w/ ret   Hit Rate  Avg ret|long  Avg ret|short
+----------------------------------------------------------------
+Momentum             -0.0051      56.1%       0.0570%        0.0896%
+MeanRevert            0.0536      45.7%       0.2408%       -0.0324%
+Breakout             -0.0778      50.6%       0.0433%        0.8843%
+Defensive            -0.0177      55.2%       0.0599%        0.0000%
+EW Blend              0.0118
+
+--- Hard Picks by Market Period ---
+Period                 Momentum    MeanRev   Breakout  Defensive
+------------------------------------------------------------------------
+COVID crash              16.7%     25.0%     16.7%     41.7%
+COVID recovery           66.3%     11.5%      6.7%     15.4%
+2022 bear                41.3%      9.2%     16.8%     32.7%
+Late-2022 rebound        53.6%     19.6%     12.5%     14.3%
+2023-24 bull             49.2%     18.3%     15.4%     17.2%
+
+==========================================================================================
+DIAGNOSTIC COMPLETE
+==========================================================================================

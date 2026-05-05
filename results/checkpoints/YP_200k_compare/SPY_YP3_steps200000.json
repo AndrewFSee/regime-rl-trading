@@ -1,0 +1,30 @@
+{
+  "checkpoint_path": "results\\checkpoints\\YP_200k_compare\\SPY_YP3_steps200000.zip",
+  "combo_name": "YP3: hard+cap35+pen03+f50+t10",
+  "config_code": "YP3",
+  "end": "2025-01-01",
+  "env_kwargs": {
+    "benchmark_relative": false,
+    "bull_benchmark": false,
+    "downside_only": true,
+    "exposure_floor": 0.5,
+    "exposure_penalty": 0.0,
+    "hard_selection": true,
+    "lookback_window": 20,
+    "normalize_obs": true,
+    "obs_features": null,
+    "regime_guardrail": false,
+    "return_weight": 0.0,
+    "risk_off_exposure_cap": 0.35,
+    "risk_off_strategy_penalty": 0.03,
+    "trend_bonus": 0.1
+  },
+  "obs_features": null,
+  "seed": null,
+  "start": "2007-01-01",
+  "stopped_at": 200000,
+  "ticker": "SPY",
+  "timesteps": 200000,
+  "train_ratio": 0.7,
+  "use_lstm": false
+}

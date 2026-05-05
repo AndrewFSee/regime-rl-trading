@@ -4,6 +4,7 @@ Tests for RL agent modules.
 Heavy dependencies (torch, stable-baselines3) are skipped gracefully when
 not installed.
 """
+import os
 import numpy as np
 import pytest
 
@@ -88,6 +89,15 @@ class TestPPOAgent:
         action = new_agent.act(obs)
         assert action.shape == env.action_space.shape
 
+    def test_tensorboard_log_threaded_to_sb3(self):
+        """``tensorboard_log`` from agent config must reach SB3's PPO model."""
+        pytest.importorskip("stable_baselines3")
+        from src.agents.ppo_agent import PPOAgent
+        env = _make_env()
+        tb_dir = "/tmp/regime-rl-tb-test-marker"
+        agent = PPOAgent(env, config={"tensorboard_log": tb_dir})
+        assert agent.model.tensorboard_log == tb_dir
+
 
 # ---------------------------------------------------------------------------
 # DQNAgent
@@ -160,3 +170,114 @@ class TestMetaAgent:
         obs, _ = env.reset()
         action = agent.act(obs)
         assert action.shape == env.action_space.shape
+
+
+# ---------------------------------------------------------------------------
+# TQCAgent (distributional / risk-averse SAC)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.skipif(
+    not pytest.importorskip("sb3_contrib", reason="sb3_contrib not installed"),
+    reason="sb3_contrib not installed",
+)
+class TestTQCAgent:
+    def test_instantiation_and_act(self):
+        from src.agents.tqc_agent import TQCAgent
+        env = _make_env()
+        agent = TQCAgent(
+            env,
+            config={"top_quantiles_to_drop_per_net": 4, "n_quantiles": 25},
+        )
+        obs, _ = env.reset()
+        action = agent.act(obs)
+        assert action.shape == env.action_space.shape
+
+    def test_invalid_top_drop_raises(self):
+        from src.agents.tqc_agent import TQCAgent
+        env = _make_env()
+        with pytest.raises(ValueError, match="top_quantiles_to_drop_per_net"):
+            TQCAgent(env, config={"n_quantiles": 25, "top_quantiles_to_drop_per_net": 25})
+
+    def test_top_drop_threaded_to_model(self):
+        """The CVaR knob must reach sb3-contrib's TQC instance."""
+        from src.agents.tqc_agent import TQCAgent
+        env = _make_env()
+        agent = TQCAgent(env, config={"top_quantiles_to_drop_per_net": 5})
+        assert agent.model.top_quantiles_to_drop_per_net == 5
+
+
+# ---------------------------------------------------------------------------
+# HierarchicalAgent (manager + worker ensemble)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.skipif(
+    not pytest.importorskip("torch", reason="torch not installed"),
+    reason="torch not installed",
+)
+class TestHierarchicalAgent:
+    """Lightweight sanity tests using mock workers (no SB3 dependency)."""
+
+    class _MockWorker:
+        """Returns a fixed action; satisfies BaseAgent surface needed."""
+        def __init__(self, action):
+            self._action = np.asarray(action, dtype=np.float32)
+
+        def act(self, _obs):
+            return self._action.copy()
+
+        def save(self, path):
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            np.save(path + ".npy", self._action)
+
+        def load(self, path):
+            self._action = np.load(path + ".npy")
+
+    def test_act_routes_to_chosen_worker(self):
+        from src.agents.hierarchical_agent import HierarchicalAgent
+        env = _make_env()
+        action_dim = env.action_space.shape[0]
+        # Two workers with distinct actions
+        w0 = self._MockWorker(np.zeros(action_dim, dtype=np.float32))
+        w1 = self._MockWorker(np.ones(action_dim, dtype=np.float32))
+        agent = HierarchicalAgent(env, workers=[w0, w1], config={"seed": 0})
+
+        obs, _ = env.reset()
+        chosen = agent.select_worker(obs)
+        action = agent.act(obs)
+        np.testing.assert_array_equal(action, [w0, w1][chosen]._action)
+
+    def test_manager_updates_change_routing(self, tmp_path=None):
+        """After REINFORCE updates with one worker forced to be 'good',
+        the manager should converge to picking that worker more often."""
+        from src.agents.hierarchical_agent import HierarchicalAgent
+        import torch
+
+        env = _make_env()
+        action_dim = env.action_space.shape[0]
+        # One worker outputs full long, the other full flat.
+        long_action = np.array([1.0] + [0.0] * (action_dim - 1), dtype=np.float32)
+        flat_action = np.zeros(action_dim, dtype=np.float32)
+        w_long = self._MockWorker(long_action)
+        w_flat = self._MockWorker(flat_action)
+
+        agent = HierarchicalAgent(
+            env,
+            workers=[w_long, w_flat],
+            config={"seed": 0, "manager_lr": 1e-2, "entropy_coef": 0.0},
+        )
+
+        # Manually feed positive reward to worker 0 picks, negative to worker 1.
+        # We simulate one full update cycle.
+        for _ in range(50):
+            obs, _ = env.reset()
+            log_p, idx = agent._sample_worker(obs)
+            agent._log_probs.append(log_p)
+            agent._rewards.append(1.0 if idx == 0 else -1.0)
+        agent._update_manager()
+
+        # After biased training, sampling distribution should favour worker 0.
+        with torch.no_grad():
+            obs, _ = env.reset()
+            logits = agent.manager(agent._to_tensor(obs))
+            probs = torch.softmax(logits, dim=-1).cpu().numpy()
+        assert probs[0] > probs[1], f"manager did not learn preference: {probs}"

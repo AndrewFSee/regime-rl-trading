@@ -170,3 +170,59 @@ def test_hmm_detector_raises_without_hmmlearn(monkeypatch):
             _sys.modules["hmmlearn"] = hmmlearn_backup
         if hmmlearn_hmm_backup is not None:
             _sys.modules["hmmlearn.hmm"] = hmmlearn_hmm_backup
+# ---------------------------------------------------------------------------
+# OnlineHMMRegimeDetector
+# ---------------------------------------------------------------------------
+
+def test_online_hmm_predict_matches_length():
+    pytest.importorskip("hmmlearn")
+    from src.regime_detection.online_hmm import OnlineHMMRegimeDetector
+    from src.regime_detection.hmm_detector import HMMRegimeDetector
+    from src.regime_detection.base import MarketRegime
+
+    data = _make_ohlcv(n=200)
+    base = HMMRegimeDetector(n_components=3, n_iter=10, covariance_type="diag")
+    detector = OnlineHMMRegimeDetector(base=base, window=64)
+    detector.fit(data)
+    regimes = detector.predict(data)
+    assert len(regimes) == len(data)
+    for r in regimes:
+        assert isinstance(r, MarketRegime)
+
+
+def test_online_hmm_update_advances_posterior():
+    pytest.importorskip("hmmlearn")
+    from src.regime_detection.online_hmm import OnlineHMMRegimeDetector
+    from src.regime_detection.hmm_detector import HMMRegimeDetector
+
+    data = _make_ohlcv(n=200)
+    base = HMMRegimeDetector(n_components=3, n_iter=10, covariance_type="diag")
+    detector = OnlineHMMRegimeDetector(base=base, window=64).fit(data)
+    prior = detector.posterior.copy()
+
+    # Feed 5 fresh bars; posterior must change at least once and stay
+    # a valid probability distribution.
+    new_bars = _make_ohlcv(n=5, seed=99)
+    moved = False
+    for _, row in new_bars.iterrows():
+        detector.update(row.to_dict())
+        post = detector.posterior
+        assert post.shape == prior.shape
+        assert post.min() >= 0.0
+        assert abs(post.sum() - 1.0) < 1e-6
+        if not np.allclose(post, prior):
+            moved = True
+    assert moved, "Posterior never updated after 5 new bars"
+
+
+def test_online_hmm_predict_is_idempotent():
+    pytest.importorskip("hmmlearn")
+    from src.regime_detection.online_hmm import OnlineHMMRegimeDetector
+    from src.regime_detection.hmm_detector import HMMRegimeDetector
+
+    data = _make_ohlcv(n=200)
+    base = HMMRegimeDetector(n_components=3, n_iter=10, covariance_type="diag")
+    detector = OnlineHMMRegimeDetector(base=base, window=64).fit(data)
+    r1 = detector.predict(data)
+    r2 = detector.predict(data)
+    np.testing.assert_array_equal(r1, r2)
